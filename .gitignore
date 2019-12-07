@@ -1,0 +1,15 @@
+#General
+/docs
+/build
+
+#CMake
+cmake-build-*/
+
+#CLion
+*/.idea
+.idea
+
+#KDevelop
+.kdev4
+*.kdev4
+.buildconfig
