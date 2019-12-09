@@ -173,11 +173,29 @@ namespace cache_manager
         }
 
         /*!
-         * Returns weight of a value
+         * Returns weight of a value in case a value is already managed by cache manager
+         * This overload might work faster with complex weigher function
          * @param val Value to check weight of
          * @return Weight of value
          */
-        size_t calculate_weight(std::add_lvalue_reference_t<std::add_const_t<T>> val) const { return _weigher(val); }
+        size_t calculate_weight(std::add_lvalue_reference_t<std::add_const_t<T>> val) const
+        {
+            return _weigher(val);
+        }
+
+        /*!
+         * Returns weight of a value indexed by cache manager
+         * @param val Value to check weight of
+         * @return Weight of value
+         */
+        size_t calculate_weight(const_replacement_iterator<T> it) const
+        {
+#ifdef CACHE_STORE_WEIGHT
+            return it._ptr->second.weight;
+#else
+            return _weigher(it._ptr->first);
+#endif
+        }
 
         /*!
          * Checks whether manager can fit a value with provided weight
@@ -224,6 +242,52 @@ namespace cache_manager
             node->second.weight = weight;
 #endif
             return replacement_iterator<T>(node);
+        }
+
+        /*!
+         * Inserts an element that was previously erased from manager
+         * Must be performed in an order opposite to erase and no manager modifications must have happened between
+         * erase and reinsert
+         * @param it Iterator to an element that was previously erased from manager
+         */
+        void reinsert(const_replacement_iterator<T> it)
+        {
+            auto weight = calculate_weight(it);
+            assert(can_fit(weight));
+            _weight += weight;
+            auto prev = __prev(it._ptr);
+            auto next = __next(it._ptr);
+            __link(prev, const_cast<stored_node<T>*>(it._ptr));
+            __link(const_cast<stored_node<T>*>(it._ptr), next);
+        }
+
+
+        /*!
+         * Updates weight of a changed element
+         * @param it Changed element
+         * @param oldWeight Weight before change
+         * @param newWeight Weight after change
+         */
+        void update_weight(replacement_iterator<T> it, size_t oldWeight, size_t newWeight)
+        {
+            assert(newWeight == calculate_weight(*it));
+            _weight -= oldWeight;
+            _weight += newWeight;
+            assert(_weight <= _capacity);
+#if !defined(NDEBUG) || defined(CACHE_STORE_WEIGHT)
+            assert(it._ptr->second.weight == oldWeight);
+            it._ptr->second.weight = newWeight;
+#endif
+        }
+
+        /*!
+         * Updates weight of a changed element
+         * @param it Changed element
+         * @param oldWeight Weight before change
+         */
+        void update_weight(replacement_iterator<T> it, size_t oldWeight)
+        {
+            update_weight(it, oldWeight, calculate_weight(*it));
         }
 
         /*!
@@ -357,12 +421,59 @@ namespace cache_manager
         }
 
         /*!
+         * Get next element to be erased according to replacement policy, ignoring the provided element
+         * @param except Element to ignore when searching for next
+         * @return replacement_iterator pointing to an element that should be erased next, end iterator it none can be erased
+         */
+        const_replacement_iterator<T> next_except(const_replacement_iterator<T> except) const
+        {
+            if(cbegin() == cend())
+            {
+                return cend();
+            }
+            auto prev = __prev(except._ptr);
+            auto next = __next(except._ptr);
+            __link(prev, next);
+            auto ret = policy::policy_extractor<T, RepPolicy>::erase_position(_policy, cbegin(), cend());
+            assert(ret != except);
+            __link(prev, const_cast<stored_node<T>*>(except._ptr));
+            __link(const_cast<stored_node<T>*>(except._ptr), next);
+            return ret;
+        }
+
+        /*!
+         * Get next element to be erased according to replacement policy, starting from hint position and ignoring the provided element
+         * @param hint Position to start search for element to erase
+         * @param except Element to ignore when searching for next
+         * @return replacement_iterator pointing to an element that should be erased next, end iterator it none can be erased
+         */
+        const_replacement_iterator<T> next_except(const_replacement_iterator<T> hint, const_replacement_iterator<T> except) const
+        {
+            if(cbegin() == cend())
+            {
+                return cend();
+            }
+            if(hint == except)
+            {
+                ++hint;
+            }
+            auto prev = __prev(except._ptr);
+            auto next = __next(except._ptr);
+            __link(prev, next);
+            auto ret = policy::policy_extractor<T, RepPolicy>::erase_position(_policy, hint, cend());
+            assert(ret != except);
+            __link(prev, const_cast<stored_node<T>*>(except._ptr));
+            __link(const_cast<stored_node<T>*>(except._ptr), next);
+            return ret;
+        }
+
+        /*!
          * Swaps content of two managers
          * @param other Other manager
          */
         void swap(cache_manager& other) noexcept(std::is_nothrow_swappable_v<Weight> && std::is_nothrow_swappable_v<RepPolicy> )
         {
-            std::swap(_first, other._first);
+            std::swap(_first.second, other._first.second);
             _fix_first(&other._first);
             other._fix_first(&_first);
             std::swap(_capacity, other._capacity);
