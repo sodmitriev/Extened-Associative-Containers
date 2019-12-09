@@ -64,7 +64,7 @@ Limited containers provide an interface to specify a relative size of a stored v
  be erased.
  
  Notice that when using a custom weight functor size of an element must stay constant throughout the time that element
- is stored within a container. Changing a stored element weight will lead to and unidentified behaviour. To safely
+ is stored within a container. Changing a stored element's weight is possible with `assign` methods. To manually
  modify an element's weight it's advised to `extract` element from the container, modify that element and `insert` it 
  back. This, however, will reset it's position in replacement queue, which may be inappropriate for some replacement 
  algorithms.

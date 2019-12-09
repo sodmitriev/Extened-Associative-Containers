@@ -78,7 +78,7 @@ namespace cache_manager
          * Dereference value stored by iterator
          * @return Value stored by iterator
          */
-        reference operator*()
+        reference operator*() const
         {
             assert(_ptr != nullptr);
             return _ptr->first;
@@ -88,7 +88,7 @@ namespace cache_manager
          * Dereference value stored by iterator
          * @return Pointed to value stored by iterator
          */
-        pointer operator->()
+        pointer operator->() const
         {
             assert(_ptr != nullptr);
             return &_ptr->first;
