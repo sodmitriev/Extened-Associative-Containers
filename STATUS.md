@@ -5,7 +5,7 @@
 |set               |-      |-       |-                 |
 |map               |-      |-       |-                 |
 |unordered_set     |-      |-       |-                 |
-|unordered_map     |~      |-       |-                 |
+|unordered_map     |+      |-       |-                 |
 |multiset          |-      |-       |-                 |
 |multimap          |-      |-       |-                 |
 |unordered_multiset|-      |-       |-                 |
