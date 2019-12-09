@@ -8,5 +8,5 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wconvers
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 ${CMAKE_CXX_FLAGS_DEBUG}")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG ${CMAKE_CXX_FLAGS_RELEASE}")
 
-add_subdirectory(Catch2)
 add_subdirectory(cache_manager)
+add_subdirectory(limited)
