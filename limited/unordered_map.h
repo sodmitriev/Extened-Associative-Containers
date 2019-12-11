@@ -504,11 +504,21 @@ namespace extended_containers
 
             /**
              * Moves an element in the replacement queue the same way as if it has been accessed
+             * This method copies the key (to be fixed in C++20), if this behaviour is undesired use value_type overload
              * @param key Key of an element
              */
             void access(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                access({key, {}});
+            }
+
+            /**
+             * Moves an element in the replacement queue the same way as if it has been accessed
+             * @param val Pair containing key of an element
+             */
+            void access(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if(it != _map.end())
                 {
                     _manager.access(&*it);
@@ -702,10 +712,20 @@ namespace extended_containers
             }
 
             /// Extract a node.
+            /// This method copies the key (to be fixed in C++20), if this behaviour is undesired
+            /// use value_type overload
             node_type
             extract(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                return extract({key, {}});
+            }
+
+            /// Extract a node.
+            /// This method copies the key (to be fixed in C++20), if this behaviour is undesired use value_type overload
+            node_type
+            extract(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if(it != _map.end())
                 {
                     _manager.erase(&*it);
@@ -1048,15 +1068,26 @@ namespace extended_containers
              *  the %pair is assigned from __obj.
              *
              *  Insertion requires amortized constant time.
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             template <typename Obj>
             std::pair<iterator, bool>
             insert_or_assign(const key_type& k, Obj&& obj)
             {
-                auto it = _map.find({k, {}});
+                return insert_or_assign({k, {}}, std::forward<Obj>(obj));
+            }
+
+            // no key copy overload
+            template <typename Obj>
+            std::pair<iterator, bool>
+            insert_or_assign(const value_type& key, Obj&& obj)
+            {
+                auto it = _map.find(key);
                 if(it == _map.end())
                 {
-                    auto ret = emplace(k, std::forward<Obj>(obj));
+                    auto ret = emplace(key.first, std::forward<Obj>(obj));
                     assert(ret.second);
                     return ret;
                 }
@@ -1071,10 +1102,18 @@ namespace extended_containers
             std::pair<iterator, bool>
             insert_or_assign(key_type&& k, Obj&& obj)
             {
-                auto it = _map.find({k, {}});
+                return insert_or_assign({std::move(k), {}}, std::forward<Obj>(obj));
+            }
+
+            // move-capable no key copy overload
+            template <typename Obj>
+            std::pair<iterator, bool>
+            insert_or_assign(value_type&& key, Obj&& obj)
+            {
+                auto it = _map.find(key);
                 if(it == _map.end())
                 {
-                    auto ret = emplace(std::move(k), std::forward<Obj>(obj));
+                    auto ret = emplace(std::move(key.first), std::forward<Obj>(obj));
                     assert(ret.second);
                     return ret;
                 }
@@ -1095,7 +1134,7 @@ namespace extended_containers
             template <typename Obj>
             iterator assign(iterator position, Obj&& obj)
             {
-                key_type newVal {std::forward<Obj>(obj)};
+                mapped_type newVal {std::forward<Obj>(obj)};
                 replacement_iterator repl_it = _manager.toIter(&*position._iterator);
                 auto oldWeight = _manager.calculate_weight(repl_it);
                 auto node = _map.extract(position._iterator);
@@ -1153,6 +1192,9 @@ namespace extended_containers
              *  for more on @a hinting.
              *
              *  Insertion requires amortized constant time.
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             template <typename Obj>
             iterator
@@ -1163,6 +1205,16 @@ namespace extended_containers
                 return insert_or_assign(k, std::forward<Obj>(obj)).first;
             }
 
+            // no key copy overload
+            template <typename Obj>
+            iterator
+            insert_or_assign(const_iterator, const value_type& key,
+                             Obj&& obj)
+            {
+                //Can't efficiently implement insertions with hint
+                return insert_or_assign(key, std::forward<Obj>(obj)).first;
+            }
+
             // move-capable overload
             template <typename Obj>
             iterator
@@ -1170,6 +1222,15 @@ namespace extended_containers
             {
                 //Can't efficiently implement insertions with hint
                 return insert_or_assign(std::move(k), std::forward<Obj>(obj)).first;
+            }
+
+            // move-capable no key copy overload
+            template <typename Obj>
+            iterator
+            insert_or_assign(const_iterator, value_type&& key, Obj&& obj)
+            {
+                //Can't efficiently implement insertions with hint
+                return insert_or_assign(std::move(key), std::forward<Obj>(obj)).first;
             }
 
             //@{
@@ -1220,11 +1281,21 @@ namespace extended_containers
              *  Note that this function only erases the element, and that if the
              *  element is itself a pointer, the pointed-to memory is not touched in
              *  any way.  Managing the pointer is the user's responsibility.
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             size_type
             erase(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                return erase({key, {}});
+            }
+
+            // no key copy overload
+            size_type
+            erase(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if(it ==  _map.end())
                 {
                     return 0;
@@ -1269,7 +1340,7 @@ namespace extended_containers
                 {
                     try
                     {
-                        nodes.push_back(_map.extract({it->first, {}}));
+                        nodes.push_back(_map.extract(*it));
                     }
                     catch(...)
                     {
@@ -1366,11 +1437,21 @@ namespace extended_containers
              *  the key matches.  If successful the function returns an iterator
              *  pointing to the sought after element.  If unsuccessful it returns the
              *  past-the-end ( @c end() ) iterator.
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             iterator
             find(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                return find({key, {}});
+            }
+
+            // no key copy overload
+            iterator
+            find(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if (it != _map.cend())
                 {
                     _manager.access(&*it);
@@ -1381,19 +1462,40 @@ namespace extended_containers
             iterator
             quiet_find(const key_type& key)
             {
-                return  _map.find({key, {}});
+                return  quiet_find({key, {}});
+            }
+
+            // no key copy overload
+            iterator
+            quiet_find(const value_type& key)
+            {
+                return  _map.find(key);
             }
 
             const_iterator
             quiet_find(const key_type& key) const
             {
-                return _map.find({key, {}});
+                return quiet_find({key, {}});
+            }
+
+            // no key copy overload
+            const_iterator
+            quiet_find(const value_type& key) const
+            {
+                return _map.find(key);
             }
 
             replacement_iterator
             replacement_find(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                return replacement_find({key, {}});
+            }
+
+            // no key copy overload
+            replacement_iterator
+            replacement_find(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if (it != _map.cend())
                 {
                     _manager.access(&*it);
@@ -1405,7 +1507,14 @@ namespace extended_containers
             replacement_iterator
             quiet_replacement_find(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                return quiet_replacement_find({key, {}});
+            }
+
+            // no key copy overload
+            replacement_iterator
+            quiet_replacement_find(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if (it != _map.cend())
                 {
                     return  decltype(_manager)::toIter(&*it);
@@ -1416,13 +1525,21 @@ namespace extended_containers
             const_replacement_iterator
             quiet_replacement_find(const key_type& key) const
             {
-                auto it = _map.find({key, {}});
+                return quiet_replacement_find({key, {}});
+            }
+
+            // no key copy overload
+            const_replacement_iterator
+            quiet_replacement_find(const value_type& key) const
+            {
+                auto it = _map.find(key);
                 if (it != _map.cend())
                 {
                     return  decltype(_manager)::toIter(&*it);
                 }
                 return _manager.cend();
             }
+
             //@}
 
             /**
@@ -1433,11 +1550,21 @@ namespace extended_containers
              *  This function only makes sense for %unordered_multimap; for
              *  %unordered_map the result will either be 0 (not present) or 1
              *  (present).
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             size_type
             count(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                return count({key, {}});
+            }
+
+            //no key copy overload
+            size_type
+            count(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if (it != _map.cend())
                 {
                     _manager.access(&*it);
@@ -1448,17 +1575,32 @@ namespace extended_containers
 
             size_type
             quiet_count(const key_type& key) const
-            { return _map.count({key, {}}); }
+            { return quiet_count({key, {}}); }
+
+            // no key copy overload
+            size_type
+            quiet_count(const value_type & key) const
+            { return _map.count(key); }
 
             /**
              *  @brief  Finds whether an element with the given key exists.
              *  @param  key  Key of elements to be located.
              *  @return  True if there is any element with the specified key.
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             bool
             contains(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                return contains({key, {}});
+            }
+
+            // no key copy overload
+            bool
+            contains(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if (it != _map.cend())
                 {
                     _manager.access(&*it);
@@ -1469,7 +1611,12 @@ namespace extended_containers
 
             bool
             quiet_contains(const key_type& key) const
-            { return _map.count({key, {}}) > 0; }
+            { return quiet_contains({key, {}}); }
+
+            // no key copy overload
+            bool
+            quiet_contains(const value_type& key) const
+            { return _map.count(key) > 0; }
 
             //@{
             /**
@@ -1479,11 +1626,21 @@ namespace extended_containers
              *           matching given key.
              *
              *  This function probably only makes sense for %unordered_multimap.
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             std::pair<iterator, iterator>
             equal_range(const key_type& key)
             {
-                auto it = _map.equal_range({key, {}});
+                return equal_range({key, {}});
+            }
+
+            // no key copy overload
+            std::pair<iterator, iterator>
+            equal_range(const value_type& key)
+            {
+                auto it = _map.equal_range(key);
                 for (auto it1 = it.first; it1 != it.second; ++it1)
                 {
                     _manager.access(&*it1);
@@ -1494,13 +1651,27 @@ namespace extended_containers
             std::pair<iterator, iterator>
             quiet_equal_range(const key_type& key)
             {
-                return _map.equal_range({key, {}});
+                return quiet_equal_range({key, {}});
+            }
+
+            // no key copy overload
+            std::pair<iterator, iterator>
+            quiet_equal_range(const value_type& key)
+            {
+                return _map.equal_range(key);
             }
 
             std::pair<const_iterator, const_iterator>
             quiet_equal_range(const key_type& key) const
             {
-                return _map.equal_range({key, {}});
+                return quiet_equal_range({key, {}});
+            }
+
+            // no key copy overload
+            std::pair<const_iterator, const_iterator>
+            quiet_equal_range(const value_type& key) const
+            {
+                return _map.equal_range(key);
             }
             //@}
 
@@ -1566,6 +1737,9 @@ namespace extended_containers
              *  is then returned.
              *
              *  Lookup requires constant time.
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             const mapped_type&
             operator[](const key_type& key)
@@ -1587,11 +1761,21 @@ namespace extended_containers
              *  @return  A reference to the data whose key is equal to @a key, if
              *           such a data is present in the %unordered_map.
              *  @throw  std::out_of_range  If no such data is present.
+             *
+             *  This method copies the key even if assignment takes place (to be fixed in C++20),
+             *  if this behaviour is undesired use value_type overload
              */
             const mapped_type&
             at(const key_type& key)
             {
-                auto it = _map.find({key, {}});
+                return at({key, {}});
+            }
+
+            // no key copy overload
+            const mapped_type&
+            at(const value_type& key)
+            {
+                auto it = _map.find(key);
                 if(it == _map.end())
                 {
                     throw std::out_of_range("Data with provided key does not exist");
@@ -1603,7 +1787,14 @@ namespace extended_containers
             const mapped_type&
             quiet_at(const key_type& key) const
             {
-                auto it = _map.find({key, {}});
+                return quiet_at({key, {}});
+            }
+
+            // no key copy overload
+            const mapped_type&
+            quiet_at(const value_type& key) const
+            {
+                auto it = _map.find(key);
                 if(it == _map.end())
                 {
                     throw std::out_of_range("Data with provided key does not exist");
@@ -1637,10 +1828,18 @@ namespace extended_containers
              * @brief  Returns the bucket index of a given element.
              * @param  key  A key instance.
              * @return  The key bucket index.
+             *
+             * This method copies the key even if assignment takes place (to be fixed in C++20),
+             * if this behaviour is undesired use value_type overload
              */
             size_type
             bucket(const key_type& key) const
-            { return _map.bucket({key, {}}); }
+            { return bucket({key, {}}); }
+
+            // no key copy overload
+            size_type
+            bucket(const value_type& key) const
+            { return _map.bucket(key); }
 
             /**
              *  @brief  Returns a read/write iterator pointing to the first bucket
