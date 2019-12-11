@@ -63,7 +63,7 @@ void test(const std::unordered_map<int, int>& values, size_t capacity)
     time = std::chrono::steady_clock::now();
     for(auto & i : cmpMap)
     {
-        map.find(i.first);
+        map.find(i);
     }
     diff = std::chrono::steady_clock::now() - time;
     std::cout << "        extended_containers::limited::map took "
@@ -82,7 +82,7 @@ void test(const std::unordered_map<int, int>& values, size_t capacity)
     time = std::chrono::steady_clock::now();
     for(auto & i : cmpMap)
     {
-        map.quiet_find(i.first);
+        map.quiet_find(i);
     }
     diff = std::chrono::steady_clock::now() - time;
     std::cout << "        extended_containers::limited::map took "
@@ -102,7 +102,7 @@ void test(const std::unordered_map<int, int>& values, size_t capacity)
     time = std::chrono::steady_clock::now();
     for(auto & i : vals)
     {
-        map.erase(i.first);
+        map.erase(i);
     }
     diff = std::chrono::steady_clock::now() - time;
     std::cout << "        extended_containers::limited::map took "
