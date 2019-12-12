@@ -6,7 +6,6 @@
 #define EXTENDEDASSOCIATIVECONTAINERS_UNORDERED_MAP_H
 
 #include "base.h"
-#include <vector>
 #include <deque>
 #include <unordered_map>
 
@@ -382,7 +381,7 @@ namespace extended_containers
             unordered_map&
             operator=(std::initializer_list<value_type> list)
             {
-                size_t weight = 0;
+                weight_type weight = 0;
                 for(auto &i : list)
                 {
                     weight += _manager.calculate_weight(i);
@@ -964,8 +963,9 @@ namespace extended_containers
             void
             insert(InputIterator first, InputIterator last)
             {
-                std::vector<std::add_pointer_t<cache_manager::stored_node<std::pair<int, int>>>> inserted;
-                size_t weight = 0;
+                std::deque<typename decltype(_map)::value_type*, allocator_type>
+                        inserted(get_allocator());
+                weight_type weight = 0;
                 try
                 {
                     for(; first != last; ++first)
@@ -1335,7 +1335,7 @@ namespace extended_containers
             replacement_iterator
             erase(const_replacement_iterator first, const_replacement_iterator last)
             {
-                std::deque<typename decltype(_map)::node_type> nodes;
+                std::deque<typename decltype(_map)::node_type, allocator_type> nodes(get_allocator());
                 for (auto it = first; it != last; ++it)
                 {
                     try
@@ -1963,7 +1963,7 @@ namespace extended_containers
                 }
             }
 
-            bool freeSpace(size_t weight)
+            bool freeSpace(weight_type weight)
             {
 #ifndef NDEBUG
                 auto startWeight = _manager.weight();
@@ -1972,8 +1972,8 @@ namespace extended_containers
                 {
                     return false;
                 }
-                size_t freedWeight = 0;
-                std::deque<const_replacement_iterator> removed;
+                weight_type freedWeight = 0;
+                std::deque<const_replacement_iterator, allocator_type> removed(get_allocator());
                 auto next = _manager.next();
                 while(freedWeight < weight)
                 {
@@ -2011,7 +2011,7 @@ namespace extended_containers
                 return true;
             }
 
-            bool freeSpace(size_t weight, const_replacement_iterator except)
+            bool freeSpace(weight_type weight, const_replacement_iterator except)
             {
 #ifndef NDEBUG
                 auto startWeight = _manager.weight();
@@ -2020,8 +2020,8 @@ namespace extended_containers
                 {
                     return false;
                 }
-                size_t freedWeight = 0;
-                std::deque<const_replacement_iterator> removed;
+                weight_type freedWeight = 0;
+                std::deque<const_replacement_iterator, allocator_type> removed(get_allocator());
                 auto next = _manager.next_except(except);
                 while(freedWeight < weight)
                 {
@@ -2059,7 +2059,7 @@ namespace extended_containers
                 return true;
             }
 
-            bool provideSpace(size_t weight)
+            bool provideSpace(weight_type weight)
             {
                 if(weight > _manager.capacity())
                 {
@@ -2072,7 +2072,7 @@ namespace extended_containers
                 return freeSpace(weight - (_manager.capacity() - _manager.weight()));
             }
 
-            bool provideSpace(size_t weight, const_replacement_iterator except)
+            bool provideSpace(weight_type weight, const_replacement_iterator except)
             {
                 if(weight > _manager.capacity())
                 {

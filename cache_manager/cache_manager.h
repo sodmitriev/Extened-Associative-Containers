@@ -23,28 +23,6 @@ namespace cache_manager
     >
     class cache_manager
     {
-    private:
-
-        size_t _capacity;
-        stored_node<T> _first = {T{}, {&_first, &_first}};
-        size_t _weight;
-
-        Weight _weigher;
-        RepPolicy _policy;
-
-        void _fix_first(const stored_node<T>* otherFirst)
-        {
-            if(__next(&_first) == otherFirst)
-            {
-                assert(__next(&_first) == __prev(&_first));
-                __link(&_first, &_first);
-            }
-            else
-            {
-                __link(&_first, __next(&_first));
-                __link(__prev(&_first), &_first);
-            }
-        }
 
     public:
 
@@ -65,7 +43,7 @@ namespace cache_manager
          * @param weigher Functor that calculates weight of stored objects
          * @param policy Desired replacement policy
          */
-        explicit cache_manager(size_t capacity, const Weight& weigher = Weight(), const RepPolicy& policy = RepPolicy())
+        explicit cache_manager(weight_type capacity, const Weight& weigher = Weight(), const RepPolicy& policy = RepPolicy())
                 : _capacity(capacity), _weight(0), _weigher(weigher), _policy(policy)
                 {}
 
@@ -154,19 +132,19 @@ namespace cache_manager
          * Returns the total weight of currently managed elements
          * @return Total weight of currently managed elements
          */
-        size_t weight() const { return _weight; }
+        weight_type weight() const { return _weight; }
 
         /*!
          * Returns the maximum total weight of managed elements
          * @return Maximum total weight of managed elements
          */
-        size_t capacity() const { return _capacity; }
+        weight_type capacity() const { return _capacity; }
 
         /*!
          * Set the maximum total weight of managed elements
          * @param capacity Maximum total weight of managed elements
          */
-        void set_capacity(size_t capacity)
+        void set_capacity(weight_type capacity)
         {
             assert(capacity >= _weight);
             _capacity = capacity;
@@ -178,7 +156,7 @@ namespace cache_manager
          * @param val Value to check weight of
          * @return Weight of value
          */
-        size_t calculate_weight(std::add_lvalue_reference_t<std::add_const_t<T>> val) const
+        weight_type calculate_weight(std::add_lvalue_reference_t<std::add_const_t<T>> val) const
         {
             return _weigher(val);
         }
@@ -188,7 +166,7 @@ namespace cache_manager
          * @param val Value to check weight of
          * @return Weight of value
          */
-        size_t calculate_weight(const_replacement_iterator<T> it) const
+        weight_type calculate_weight(const_replacement_iterator<T> it) const
         {
 #ifdef CACHE_STORE_WEIGHT
             return it._ptr->second.weight;
@@ -202,7 +180,7 @@ namespace cache_manager
          * @param weight Weight of a value
          * @return True if manager can fit a value of provided weight, false otherwise
          */
-        bool can_fit(size_t weight) const { return (_weight + weight) <= _capacity; }
+        bool can_fit(weight_type weight) const { return (_weight + weight) <= _capacity; }
 
         /*!
          * Checks whether manager can fit the provided value
@@ -268,7 +246,7 @@ namespace cache_manager
          * @param oldWeight Weight before change
          * @param newWeight Weight after change
          */
-        void update_weight(replacement_iterator<T> it, size_t oldWeight, size_t newWeight)
+        void update_weight(replacement_iterator<T> it, weight_type oldWeight, weight_type newWeight)
         {
             assert(newWeight == calculate_weight(*it));
             _weight -= oldWeight;
@@ -285,7 +263,7 @@ namespace cache_manager
          * @param it Changed element
          * @param oldWeight Weight before change
          */
-        void update_weight(replacement_iterator<T> it, size_t oldWeight)
+        void update_weight(replacement_iterator<T> it, weight_type oldWeight)
         {
             update_weight(it, oldWeight, calculate_weight(*it));
         }
@@ -334,7 +312,7 @@ namespace cache_manager
         {
             auto prev = __prev(first._ptr);
             auto next = const_cast<stored_node<T>*>(last._ptr);
-            size_t sumWeight = 0;
+            weight_type sumWeight = 0;
             while(first != last)
             {
                 auto node = first._ptr;
@@ -480,6 +458,29 @@ namespace cache_manager
             std::swap(_weight, other._weight);
             std::swap(_weigher, other._weigher);
             std::swap(_policy, other._policy);
+        }
+
+    private:
+
+        weight_type _capacity;
+        stored_node<T> _first = {T{}, {&_first, &_first}};
+        weight_type _weight;
+
+        Weight _weigher;
+        RepPolicy _policy;
+
+        void _fix_first(const stored_node<T>* otherFirst)
+        {
+            if(__next(&_first) == otherFirst)
+            {
+                assert(__next(&_first) == __prev(&_first));
+                __link(&_first, &_first);
+            }
+            else
+            {
+                __link(&_first, __next(&_first));
+                __link(__prev(&_first), &_first);
+            }
         }
         
     };
